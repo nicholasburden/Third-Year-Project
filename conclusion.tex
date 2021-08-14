@@ -1,0 +1,29 @@
+\subsection{Summary of Results}
+
+This project explored the theory, development and testing of three Hex-playing agents, based on various standard AI approaches, as well as Hex specific algorithms. Experiments were conducted to evaluate the performance and efficiency of each agent on different board sizes and with various parameters. 
+
+
+
+
+We can conclude that H-Search can increase an agent's performance. However, this comes with high computational cost. As a result, simpler methods can often out-perform agents fully utilizing H-Search when time is constrained. Despite these disadvantages, restricting an agent's use of H-Search when combined with other methods have proven to be successful under time pressure.
+
+
+
+
+Finally, it was found that the minimax algorithm generally performed better than Monte Carlo tree search in the domain of Hex. This is interesting, since the current ICGA Hex world champion (\textit{MoHex}) uses Monte Carlo tree search. However, \textit{MoHex} uses very advanced cell analysis, a lot of which is hard-coded cell patterns, which leads to such high performance. Our implementation, on the other hand, uses limited cell analysis, which leads us to the conclusion that without the level of analysis present in \textit{MoHex}, Monte Carlo tree search cannot play as effectively as a minimax agent.
+
+
+
+\subsection{Future Work}
+
+In this project, the main downfall of many of the agents were their running time when using H-Search. This is unfortunate, as H-Search provides invaluable insight into a position's value, and has proven to significantly increase the effectiveness of an agent given a long enough time allowance. Future work involving attempts to reduce the time complexity of H-Search, or the running time of an agent using this algorithm, would be especially useful. An idea of a technique that may decrease running time is using iterative deepening in minimax. The idea is to perform the minimax algorithm with increasing depth (starting with 1) until we run out of time or reach a suitable depth. This way we would be able to consider moves in order of their values as calculated with a smaller depth. This allows alpha-beta pruning to be more effective as better moves are considered earlier on, thus reducing running time.
+
+Another possible improvement would be to experiment with parallelization of specific algorithms, allowing for a larger proportion of the game tree to be searched due to its increased efficiency. Documentation \cite{inproceedings} has demonstrated promising results concerning the parellelization of the minimax algorithm, using many GPU cores to execute it. This was beyond the scope of this project due to its lack of focus on core AI concepts.
+
+Lastly, further Hex-specific analysis would likely increase the performance of RobotMonteCarlo. Recent work \cite{MCTSHex} has shown great success using hard-coded cell patterns when searching for inferior nodes in the search tree (\textit{MoHex} uses about 250 of these patterns \cite{MCTSHex}). However, only a handful were implemented in this project due to time restraints, and as it goes against the spirit of AI by being extremely specific to Hex and lacking of any further general application.
+
+\subsection{Personal Development}
+
+This project allowed me to develop various skills and explore many interests in the field of AI. In particular, I was able to implement and appreciate a number of the key algorithms and concepts from the Intelligent Systems course.
+
+Furthermore, the size and scope of this project was considerably larger than anything previously completed. This provided invaluable experience in undertaking the key aspects of a large-scale project.

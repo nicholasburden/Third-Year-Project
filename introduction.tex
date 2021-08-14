@@ -1,0 +1,45 @@
+\subsection{Hex}
+Hex is a two-player strategy game invented by Piet Hein in 1942 \cite{pietHein}, and independently reinvented by John Nash in 1948. It is popular due to its simplicity, which is a major reason for its popularity within the field of AI and game theory. Although simple, Hex can be played with a variety of approaches, some of which can be quite subtle and counter-intuitive.
+
+
+
+
+
+\subsubsection{Winning Strategies}
+A \textit{strategy} is a mapping from game states to legal moves. A strategy is \textit{winning} if it always leads to a win, regardless of how the opponent plays.
+In 1952, John Nash proved that the first player in Hex always has a winning strategy. Despite the largest board size with a known winning strategy having size $9 \times 9$ \cite{solvingHex} it is still proven that there exists a winning strategy for any board size.
+
+To discuss winning strategies of the game of Hex, it is important to understand the different levels of \textit{solving} a game, suggested by Paul Colley and Donald Miche \cite{allis}:
+
+\begin{itemize}
+    \item \textit{Ultra-weak}: For the initial position, the game-theoretic value has been determined (note that a winning strategy may not be known, i.e \textit{non-constructive}).
+    \item \textit{Weak}: For the initial position, a strategy has been determined to obtain at least the game-theoretic value of the game for both players.   
+    \item \textit{Strong}: For all legal positions, a strategy has been determined to obtain the game-theoretic value of the position for both players.
+\end{itemize}
+
+Nash's proof shows that Hex has been ultra-weakly solved.
+
+All of the openings on the $6\times6$ board have been weakly solved by Enderton in 1995 \cite{bert}. In 2000 the $6\times6$ board was strongly solved by Rijswijck \cite{rijswijck}.
+All $7\times7$ openings were weakly solved by Hayward et al. \cite{solving7By7}, which was the first automated solution.
+The centre opening of the $9\times9$ board was weakly solved by Jing Yang by hand, which is claimed in \cite{solvingHex}.
+
+The reason that such little progress has been made on solving Hex is due to its complexity. Hex is PSPACE-complete \cite{pspace}, meaning the problem of solving a Hex state is at least as hard as the hardest problems in PSPACE.
+
+The state space of $11 \times 11$ Hex is extremely large with size $10^{57}$ (10 orders of magnitude larger than Chess). Hex's game tree size is also large, with an upper bound of $10^{86}$ nodes on an $11 \times 11$ board \cite{hexSize}.
+
+
+
+\subsection{Contributions to the Field}
+Hex has consistent research continuing its evolution. 
+
+\textit{Queenbee}, made in 2000 by Rijswijck \cite{rijswijck}, was one of the first Hex AIs created. It is based on minimax with alpha-beta pruning and showed success in the $5^{th}$ Computer Olympiad in 2000, finishing second. \textit{Queenbee} has also been used to solve openings on smaller boards, and has found all winning openings on a $6\times6$ board.
+
+
+Top Hex players make decisions based on instinct and intuition, rather than from a more calculated approach. Moves they make may seem counter-intuitive at first, but many moves later the player's subtle machinations are revealed. In order for an agent to be a strong Hex player, these approaches need to be approximated. Such an algorithm is H-Search, introduced by Anshelevich \cite{HierarchicalHex}. H-Search builds up \textit{virtual connections} between tiles, meaning that some guarantee can be made about connecting the two tiles in the future, assuming perfect play. Anshelevich's AI \textit{Hexy} \cite{HierarchicalHex} (which uses H-Search)  went on to place first at the 2000 Computer Olympiad, beating \textit{Queenbee} and showing just how powerful H-Search is.
+
+A more modern approach can be seen in \textit{MoHex} \cite{MCTSHex}, made by Arneson, Hayward and Henderson in 2007-2010, winning the Computer Olympiad in 2009-2011, 2013 and 2015. It is based on using Monte Carlo tree search, but also uses H-Search and other cell analysis algorithms to prune the search tree. 
+
+
+\subsection{Project Aims}
+
+This project aims to explore AI techniques for Hex-playing agents and evaluate their respective performances. The various approaches taken to overcome the challenges associated with Hex's extremely large game tree will also be implemented and discussed. An in-depth comparison of these methods will be conducted; it is important to evaluate their respective strengths and weaknesses within a variety of contexts.

@@ -1,0 +1,208 @@
+This project involved the implementation of three agents utilizing different algorithms and heuristics. Every agent was implemented in Scala due to its flexibility in defining abstractions, rich type system, and ability to take a functional style.
+
+\subsection{RobotAlphaBetaHSearch}
+
+Minimax with alpha-beta pruning formed the foundation of this agent. However, due to the size of the game tree a heuristic was needed. The heuristic in this agent is based on that found in \textit{Hexy} \cite{HierarchicalHex}.
+
+The heuristic uses H-Search as a method of discovering virtual connections and virtual semi-connections between cells, and then constructs a model of an electrical circuit with low resistances between cells that are virtually connected and higher resistances to those that aren't (infinite resistance is assigned between cells of opposing colours). One such circuit is constructed for each player, with the player's boundaries being treated as a cell of the player's colour. For each circuit we take the resistance across its boundary cells, $R_R$ and $R_B$. The heuristic result for Red is then given as $\log( \dfrac{R_B}{R_R})$.
+
+\subsubsection{Implementation of H-Search}
+H-Search maintains a collection of strong virtual connections (\textit{C}) and a collection of virtual semi-connections (\textit{SC}) \cite{HierarchicalHex} which we index by a pair of cells. Since each pair of cells may have multiple virtual connections, we must store multiple sets of cells for each pair of ends, so that \textit{$C(c1, c2)$} points to a set of carriers (each carrier represented by a set of cells), and similarly for \textit{SC}. It was found that the most straightforward data structure to use was a hash map, keyed by a pair of cells, and each value being of the type $Set[Set[Cell]]$ (i.e. a set of sets of cells) . A hash map allows us to efficiently index the value of a pair of cells, which is important as this will be indexed many times during execution.
+
+ Neighbouring cells of the same colour are treated as a single cell. It is important to maximize the efficiency of queries concerning which cluster a particular cell belongs to, as well as the efficiency of adding a new cell to an existing cluster. An ideal data structure for the cells was therefore a union-find data structure of disjoint sets that has efficient union and find operations. Each cell is initialized as its own set, and as moves are played, the new cell of a particular colour is unioned with any neighbouring cells of the same colour. The most efficient approach to implementing this particular data structure is to store the data in trees, with each tree representing a single set. Each set maintains a \textit{rank} and performs \textit{path compression} when the find method is called.
+ 
+ 
+ 
+ The result of treating the cells this way is a more efficient (both time and space) execution of the main H-Search algorithm: less time is taken to iterate over each pair of cells and less redundant data is stored about connected cells.
+ 
+ The implementation of H-Search was a core aspect of this project and is later utilized in the experimental analysis in Section 4.
+ 
+ 
+ \subsubsection{Implementation of Heuristic}
+ 
+ 
+ To represent a Hex board as an electrical circuit model, a simple object is created with a set of nodes. Each node of the circuit is an object containing a set of pointers to neighbouring nodes. Upon initialization, each node will store pointers to its neighbouring nodes with respect to the Hex board. Resistance of the wires is implemented as a hash map of pairs of nodes to real values. These values are initially set according to the following rules (for Red's perspective): 
+ 
+ 
+ \[
+ resistance(n1,n2) = \begin{cases}
+                        \text{0} &\quad\text{if n1 and n2 are red,}\\
+                        \text{$\infty$} &\quad\text{if n1 or n2 is blue,}\\
+                        \text{1} &\quad\text{otherwise.}\\
+                    \end{cases}
+\]
+
+We then use the result of H-Search to introduce more connections in this circuit: two nodes are connected with a wire of zero resistance if there is a virtual connection between them or if there is a virtual semi-connection between them and it is Red to play next.
+
+To solve for the resistance of the circuit, we form a system of equations using Kirchoff's laws. Each node forms a single equation by considering the resistances of the wires it is connected to. The goal of the equations is to calculate the voltage at each node (which can be used to calculate the total resistance) given a fixed current. Thus, for a node $n_i$ with neighbours $n_{x_1}$, $n_{x_2}$, ..., $n_{x_k}$ we have the equation:
+
+\begin{center}
+$\sum_{j=1}^{k}\frac{V_i}{R_{x_i}} = \sum_{j=1}^{k}\frac{V_{x_j}}{R_{x_j}}$
+\end{center}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+We also include the equations 
+\[
+V_1 = 1
+\]
+
+and
+\[
+V_N = 0
+\]
+
+This system of equations can be solved by solving:
+
+\[
+\textbf{Ax} = \textbf{b}
+\]
+
+where $A_{i,j}$ is the coefficient of $V_j$ for the $i^{th}$ equation, and $\textbf{b}_i$ is the sum of the constant terms of the equation.
+
+We then have a value for each $V_i$, and can calculate the total resistance by computing:
+
+\[
+\dfrac{1}{\sum\limits_{n_i \in Adj(n)}{\dfrac{V_i}{R_{n_i, n}}}}
+\]
+
+where n is the last node in the circuit (one of the boundaries), and $R_{n_i, n}$ is the resistance from adjacent node $n_i$ to n.
+
+
+\subsubsection{Problems with Initial Approach}
+
+In the first implementation of the heuristic, the H-Search algorithm was run every time the heuristic evaluation function was called. At a depth $k$ of the game tree explored by the minimax algorithm, there are $b^k$ leaf nodes to evaluate, where $b$ is the branching factor (assuming no pruning). This is especially large in Hex due to its large branching factor. Combined with the large computational complexity of the H-Search algorithm, this is simply too complex: on a $5\times5$ board, this approach took over 120 seconds to decide its first move with a depth of 3.
+
+To overcome this complexity problem, we use the fact that H-Search can be run with any initial set of virtual connections \cite{HierarchicalHex}. Instead of running the algorithm with just the most basic virtual connections (only virtual connections between adjacent cells), we can start with more complex connections between non-neighbouring cells. When the heuristic function is called, we can use the previous set of virtual connections (prior to making the move under consideration). The virtual connections that have a new cell appear in its carrier must be recalculated, so these virtual connections are removed and H-Search is re-run. When re-running H-Search, we need only build further virtual connections between cells of which carriers were attacked, and only consider mid-point cells within such carriers. This makes the re-run of H-Search extremely efficient, since we ignore completely virtual connections which we know will be unchanged.
+
+
+
+To allow for H-Search to be able to cheaply identify virtual connections to remove when a move has been made, we store a pointer to every cell's end points for the carrier that cell is in. Each cell might appear in the carrier set of multiple virtual connections, so this pointer has datatype Set[(Cell, Cell)], i.e a set of pairs of cells, each pair being the two end points of a different virtual connection. We differentiate here between virtual connections and virtual semi-connections. 
+
+When a move is made in a cell neighbouring an existing cell of the same colour, care must be taken to ensure the virtual connections of all cells in this newly formed cluster are consistent. This involves merging any new virtual connections from the new cell and any existing virtual connections from the existing neighbouring cells. All cells in this cluster will share the same virtual connections since (as described in Section 3.1.1) they are treated as a single cell. A pointer is associated with each cell to a set (possibly empty) of ends that form a virtual connection with the cell. This makes it efficient and simple to merge virtual connections after moves have been played. 
+
+\subsubsection{Move Ordering}
+
+As mentioned in Section 2.2.2, the effect of alpha-beta pruning in the minimax algorithm depends on the order of moves considered: if better moves are considered earlier, the less effective moves can be pruned earlier. Since it is difficult to tell whether a move is good without the use of the heuristic, we rely on educated guesses based on commonly known strong moves. For example, since moves that form a virtual connection with another cell are considered strong, we may choose to consider moves that form such a connection with another cell of the same colour earlier on. 
+
+
+On the contrary, there a some moves we want to avoid considering all together. These are moves that are in a carrier for an opponent's virtual connection, since these moves are useless and do not stop the opponent making the connection.
+
+If the player is first to play, moves are considered from the centre out; playing the middle is almost always a strong move.
+
+The implementation of this move ordering is a simple list of cells maintained during the execution of minimax, with strong moves added to the front as they appear, and removed as they are played.
+
+\subsubsection{Agent Parameters}
+Within this agent, performance is dependent on three parameters:
+
+\begin{itemize}
+    \item \textit{Depth}: maximum traversal depth of game tree during execution of minimax,
+    \item \textit{M}: maximum number of different minimal carriers with the same ends in H-Search \cite{HierarchicalHex},
+    \item \textit{K}: maximum number of virtual semi-connections on the input side of the \textbf{OR} deduction rule \cite{HierarchicalHex}.
+\end{itemize}
+
+No restrictions are made on the running time of H-Search.
+
+\subsection{RobotAlphaBetaFlow}
+
+This agent also uses the minimax algorithm with alpha-beta pruning, but takes a different approach when it comes to the heuristic. The heuristic is based on the one used in \textit{QueenBee} \cite{queenbee}: it models the Hex board as a flow network and, using a suitable algorithm (Edmonds-Karp), calculates a network flow for each player which can be used to calculate a heuristic value.
+
+
+\subsubsection{Main Idea of Heuristic}
+We start by modelling the empty board as a flow network, with each node representing a cell, and two cells are connected by an un-directed edge (actually two opposing directed edges in the network flow) if they are neighbouring cells on the board. We maintain two boards, one for Red and one for Blue. If a move with colour \textit{c} is made on the Hex board, we alter Red's flow network as follows:
+
+\begin{itemize}
+    \item If \textit{c} is red, remove the corresponding node and place an un-directed edge (if there isn't one already) between each pair of neighbours of the node.
+    \item If \textit{c} is blue, remove the corresponding node and any edges it was an end-point to.
+\end{itemize}
+
+Each of the player's boundaries is a node in the flow network, one of which is the sink ($s$), and the other is the target ($t$).
+
+The same rules can be applied to Blue's flow network, but with opposite colours.
+
+
+With the flow network formed, we can more abstractly represent potential paths between boundaries (as network flows) since opposing coloured tiles remove edges (making it more difficult to send flow through the network) and same coloured tiles add edges (making it easier to send flow through the network). Therefore, the larger the network flow, the larger the potential for connecting boundaries, and the better the state of the board is for the corresponding player.
+
+\subsubsection{Implementation of Heuristic}
+
+We define a simple flow network object consisting of a set of nodes \textit{V} and a set of edges \textit{E}. We also define the capacity function $c: \textit{E} \to \mathbb{R}$:
+
+ \[
+ c(u,v) = \begin{cases}
+                        \text{0} &\quad\text{(u,v) $\notin$ E,}\\
+                        \text{$\infty$} &\quad\text{(u,v) $\in$ E and $\{u,v\} \cap \{s,t\} \neq \emptyset$,}\\
+                        \text{1} &\quad\text{otherwise.}\\
+            \end{cases}
+\]
+
+
+It is important to have infinite capacity on edges incident to the source or sink as otherwise it impose a limit on the maximum flow of the network, which may be far below the potential flow of the rest of the network (if the capacity is small enough). Therefore, no further benefit could possibly be found by changing the board, which is undesirable. A capacity of one was chosen between two neighbouring cells (and zero between non-neighbouring cells) to allow flow being sent through the network to model the potential for connections on the Hex board; cells of the player's colour increases the flow potential of the network, and cells of the opposite colour do the contrary.
+
+
+
+Since the minimax algorithm traverses a game tree (with each node being the resultant state of applying a sequence of actions to one of its ancestors), it makes no sense to build the flow network (and run Edmonds-Karp) for a particular state more than once. Therefore, we must be diligent to re-use flow networks where possible. A straight-forward solution is to build the initial flow network before running minimax, and then take a copy of the network for each child in the game tree, applying the relevant alteration depending on the action being applied. This method can further be repeated as we traverse the tree, never performing the same alteration to the same network twice. This approach greatly increases the efficiency of the algorithm.
+
+The final heuristic value for Red is $\log{(\dfrac{f_R}{f_B})}$ where $f_R$ and $f_B$ are the maximum flows for Red and Blues flow network respectively.
+
+
+\subsubsection{Move Ordering}
+
+Since this agent makes use of the minimax algorithm, we use the same move ordering technique as described in Section 3.1.4, except that we are limited to deciding strong moves without the use of H-Search.
+
+\subsubsection{Agent Parameters}
+Within this agent, performance is dependent on a single parameter:
+
+\begin{itemize}
+    \item \textit{Depth}: maximum traversal depth of game tree during execution of minimax.
+\end{itemize}
+
+
+\subsection{RobotMonteCarlo}
+
+This agent takes a different approach, and uses Monte Carlo tree search (with Hex-specific analysis) to decide moves.
+
+\subsubsection{Data Structures}
+We explicitly define a game tree to be operated on, starting with just the root. Each node consists of a corresponding state, a pointer to its parent and a list of pointers to its children. 
+
+A state consists of a Hex board (which is implemented as a two-dimensional array of cells), a record of the number of visits during the tree search and a score.
+
+\subsubsection{Tree Pruning}
+
+Since Monte Carlo tree search spends a lot of time traversing deeply during play-outs, we want to prune the tree rid of clearly useless moves. There are two types of pruning we can use \cite{MCTSHex}:
+
+\begin{enumerate}
+    \item \textit{Dead Cells}
+    \item \textit{Captured Regions}
+\end{enumerate}
+
+A \textit{dead cell} is a cell that is provably useless for both players \cite{MCTSHex}. Playing this cell would be a disadvantage since it is a wasted move.
+
+A \textit{captured region} is a set of cells on
+which one player has a second-player strategy that negates any benefit their opponent might gain from playing in the region \cite{MCTSHex}. We find these regions through H-Search, with each region being a carrier of a virtual connection.
+We do not consider dead cells or captured regions when deciding the next move.
+Combined, these two pruning techniques shall be referred to as \textit{inferior cell analysis}.
+
+We perform inferior cell analysis when the total number of visits to a node in the tree becomes greater than some \textit{knowledge threshold} \cite{MCTSHex}. This is to avoid spending too much time analysing trivial or irrelevant boards.
+
+\subsubsection{Agent Parameters}
+Within this agent, performance is dependent on three parameters:
+
+\begin{itemize}
+    \item \textit{MCTS-Time}: total time allowed for MCTS execution,
+    \item \textit{Win Score}: score added to a state after a win,
+    \item \textit{Knowledge Threshold}: number of visits before performing inferior cell analysis,
+
+Again, no restrictions are made on the running time of H-Search.
+    
+\end{itemize}

@@ -1,0 +1,67 @@
+The approaches seen in this project use traditional algorithms (minimax) as well as newer methods (Monte Carlo tree search). There is large scope for a number of other modern AI approaches with the advancement of machine learning, so it is important to explore alternative approaches using these ideas.
+
+
+\subsection{Reinforcement Learning}
+
+Reinforcement learning (RL) is a machine learning technique that produces a policy (a mapping from states to actions) in order to maximise some reward function. It is a form of unsupervised learning (does not have access to the \textit{correct} answer), so it has extensive use in board games and, in such a setting, can learn rapidly by playing against itself.
+
+We first introduce Markov decision processes (MDP):
+
+\begin{itemize}
+    \item A set of states, S.
+    \item A set of actions, A.
+    \item A state transition function $P : S \times S \times A \to [0,1]$, where \newline $P(s,s',a) = Pr(s_{t+1} = s' | s_t = s, a_t = a)$.
+    \item A reward function $R : S \times S \times A \to \mathbb{R}$.
+\end{itemize}
+
+
+The agent interacts with the environment at incrementing time steps. The environment sends an observation to the agent, the agent chooses an action, moving the environment to a new state, and a reward is calculated. \textit{Model-free} learning algorithms do not make use of the state transition function or the reward function of the MDP.
+
+
+\subsubsection{Q-Learning}
+
+The first RL algorithm we will explore is Q-Learning. Q-Learning is a model-free algorithm, and has a function $Q : S \times A \to \mathbb{R}$ which gives a metric to the quality of performing an action a in state s. Q is usually initialized so that $Q(s,a) = 0$ for all $(s, a) \in S\times A$, but may be initialized stochastically. At each time step, Q is updated:
+
+$Q^{new}(s_t, a_t) \leftarrow (1-\alpha)\cdot Q(s_t, a_t) + \alpha \cdot (r_t + \gamma \cdot \max_{a}Q(s_{t+1},a)$
+
+
+where 
+
+\begin{itemize}
+    \item $r_t$ is the reward from moving to $s_t$ to $s_{t+1}$,
+    \item $\alpha \in [0,1]$ is the learning rate,
+    \item $\gamma \in [0,1]$ is the discount factor.
+\end{itemize}
+
+The discount factor has the effect of valuing earlier rewards higher than later rewards.
+
+In Deep Q-Learning, a deep neural network is used to approximate the Q function, which allows it to generalise state-action pairs it has not yet seen.
+
+A policy $\pi : S \to A$ is learned, which uses $Q$ to pick the action for a specified state.
+
+\textit{Neurohex} is a Deep Q-Learning agent for Hex \cite{neurohex}. It uses a convolutional neural network to approximate the Q function, with each filter being hexagonal in shape to capture the idea of connections on the board. It also uses experience replay, meaning that instead of updating the Q function based on just the last experience,
+a large set of the most recent experiences is saved, and a random batch update drawn from that set is performed \cite{neurohex}.
+
+Hex presents a difficult challenge of only having a reward at the very end of the game, when the agent has either won or lost. ``Sparse'' reward functions are traditionally very hard in RL. This makes it difficult to update the Q function for early and mid-game states, since the reward must backpropogate many actions and states. Therefore, most updates would be made without immediate win/loss feedback. \textit{Neurohex} overcomes this issue by first training the network to replicate action value given by a heuristic over a database of positions \cite{neurohex}. This allows for more meaningful early and mid-game updates at the start of Q-Learning.
+
+\textit{Neurohex} showed reasonable levels of play, beating 1-second/move \textit{MoHex} (the current ICGO champion) 20.4\% of the time when playing first, and 2.1\% of the time when playing second \cite{neurohex}.
+
+
+
+
+\subsubsection{Expert Iteration}
+
+Expert Iteration (ExIt) is an RL algorithm which decomposes the problem into separate planning and
+generalization tasks \cite{rlhex}. It uses tree search to plan new policies, and generalizes these plans with a deep neural network. This neural network would then be used to guide tree search to increase the strength of those plans \cite{rlhex}. 
+
+We must first understand the specifics of \textit{Imitation Learning} (IL). In Imitation Learning (IL), we attempt to solve the MDP by mimicking an \textit{expert policy} $\pi^*$ that has been provided (usually by a human) \cite{rlhex}. The learned policy is named the \textit{apprentice police}.
+
+ExIt uses imitation learning, but with an expert improvement step that performs Monte Carlo tree search with the \textit{apprentice policy} as a guide.
+
+ExIt (with 10,000 iterations) won 75.3\% of games against 10,000 iteration-MoHex on default
+settings, 59.3\% against 100,000 iteration-MoHex, and 55.6\% against 4 second per move-MoHex
+(with parallel solver switched on) \cite{rlhex}.
+
+Thus, this approach proved to be extremely successful.
+
+
